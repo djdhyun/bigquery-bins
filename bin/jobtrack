@@ -1,0 +1,55 @@
+#!/usr/local/bin/python3
+# -*- coding: utf-8 -*-
+import os
+import sys
+import argparse
+import logging
+
+import traceback
+
+from itertools import groupby, tee
+from operator import itemgetter
+from collections import Counter
+
+import time
+import json
+import subprocess
+
+#############
+# constants #
+#############
+UTF8STDIN = open(0, 'rb', closefd=False)
+UTF8STDOUT = open(1, 'w', encoding='utf-8', closefd=False)
+
+#################
+# main function #
+#################
+def get_response(job_id):
+    cmds = ["bq", "show", "--format=json", "-j", job_id]
+    token = subprocess.Popen(' '.join(cmds), shell=True, stdout=subprocess.PIPE).stdout.read()
+    return token.strip()
+
+def main(options):
+    job = options.job
+
+    while True:
+        resp = json.loads(get_response(job))
+        progs = resp['statistics']['query']['timeline'][-1]
+        print('%s[%s]/%s :: %d sec (%d sec)' % (
+            progs['activeUnits'],
+            progs['completedUnits'],
+            progs['pendingUnits'],
+            int(progs['elapsedMs']) // 1000,
+            int(progs['totalSlotMs']) // 1000
+        ))
+        time.sleep(10)
+
+if __name__ == '__main__':
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('job', type=str, nargs='?')
+    opt = arg_parser.parse_args()
+
+    main(opt)
+
+# column width: 120
+# vim: ts=4 sw=4 smarttab smartindent expandtab

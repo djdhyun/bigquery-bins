@@ -1,0 +1,78 @@
+#!/Users/djdhyun/poetry/virtualenvs/airflow-pyenv/bin/python
+# -*- coding: utf-8 -*-
+import os
+import sys
+import argparse
+import logging
+
+import traceback
+
+from google.cloud import bigquery
+from datetime import datetime, timedelta, timezone
+
+
+#############
+# constants #
+#############
+UTF8STDIN = open(0, 'rb', closefd=False)
+UTF8STDOUT = open(1, 'w', encoding='utf-8', closefd=False)
+
+#################
+# main function #
+#################
+def sample():
+    # Construct a BigQuery client object.
+    client = bigquery.Client()
+
+    # List the 10 most recent jobs in reverse chronological order.
+    # Omit the max_results parameter to list jobs from the past 6 months.
+    print("Last 10 jobs:")
+    for job in client.list_jobs(max_results=10):  # API request(s)
+        print("{}".format(job.job_id))
+
+    # Use min_creation_time and/or max_creation_time to specify a time window.
+    print("Jobs from the last ten minutes:")
+    ten_mins_ago = datetime.utcnow() - timedelta(minutes=10)
+    for job in client.list_jobs(min_creation_time=ten_mins_ago):
+        print("{}".format(job.job_id))
+
+    # Use all_users to include jobs run by all users in the project.
+    print("Last 10 jobs run by all users:")
+    for job in client.list_jobs(max_results=100, all_users=True):
+        print("{} run by user: {}".format(job.job_id, job.user_email))
+
+    # Use state_filter to filter by job state.
+    print("Last 10 jobs done:")
+    for job in client.list_jobs(max_results=10, state_filter="DONE"):
+        print("{}".format(job.job_id))
+
+
+def datetime_formatter(ds):
+    ds = ds.replace(tzinfo=timezone.utc).astimezone(tz=None).strftime('%Y-%m-%d %H:%M:%S')
+    return ds
+
+def main(options):
+    client = bigquery.Client()
+    options = {
+        'min_creation_time': datetime.utcnow() - timedelta(hours=6),
+        'all_users': True,
+        'max_results': 300,
+        'state_filter': 'RUNNING'
+    }
+
+    for job in client.list_jobs(**options):
+        q = job.query
+        print('[%s] [%s] %s %s %s' % (
+            job.state, datetime_formatter(job.started), 
+            job.job_id,
+            job.priority, job.job_type
+        ))
+
+if __name__ == '__main__':
+    arg_parser = argparse.ArgumentParser()
+    opt = arg_parser.parse_args()
+
+    main(opt)
+
+# column width: 120
+# vim: ts=4 sw=4 smarttab smartindent expandtab

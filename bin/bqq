@@ -1,0 +1,1 @@
+bq query --max_rows=1000000 | bq2tsv | sed \\\$d

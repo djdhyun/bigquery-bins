@@ -1,0 +1,64 @@
+# -*- coding: utf-8 -*-
+import os
+import sys
+import argparse
+import logging
+
+import traceback
+
+from itertools import groupby, tee
+from operator import itemgetter
+from collections import Counter
+
+import json
+
+#############
+# constants #
+#############
+UTF8STDIN = open(0, 'rb', closefd=False)
+UTF8STDOUT = open(1, 'w', encoding='utf-8', closefd=False)
+UTF8STDERR = open(2, 'w', encoding='utf-8', closefd=False)
+
+#################
+# main function #
+#################
+def parse_line(stream):
+    for line in stream:
+        line = line.decode('utf-8', 'ignore')
+        try:
+            node = json.loads(line.strip('\n'))
+        except:
+            print(line.rstrip('\n'), file=UTF8STDERR)
+        else:
+            yield node
+
+def main(options):
+    schs = []
+
+    lcnt = 0
+    printing = False
+
+    for line in UTF8STDIN:
+        line = line.decode('utf-8', 'ignore')
+        ts = [ r.strip() for r in line.split('|')[1:-1] ]
+
+        if not printing and (len(line) == 0 or line[0] != '+'):
+            print(line.rstrip('\n'), file=UTF8STDERR)
+            continue
+        else:
+            printing = True
+
+        lcnt += 1
+        if lcnt in [1, 2, 3]:
+            continue
+        else:
+            print('\t'.join(ts), file=UTF8STDOUT)
+
+if __name__ == '__main__':
+    arg_parser = argparse.ArgumentParser()
+    opt = arg_parser.parse_args()
+
+    main(opt)
+
+# column width: 120
+# vim: ts=4 sw=4 smarttab smartindent expandtab

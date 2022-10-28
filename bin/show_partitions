@@ -1,0 +1,23 @@
+#!/bin/sh
+if [ $# -ne 1 ]; then
+    printf "Usage: `basename $0` [table name]\n"
+    exit 1
+fi
+
+alias bqq="bq query --max_rows=1000000 | bq2tsv | sed \\\$d"
+
+N_DELIMS=$(echo $1 | tr -dc '.' | wc -c)
+
+if [ ${N_DELIMS} -eq 2 ]; then
+    PROJECT=$(echo $1 | cut -d. -f1)
+    DATASET=$(echo $1 | cut -d. -f2)
+    TABLE=$(echo $1 | cut -d. -f3)
+else
+    echo "bad table name"
+    exit 1
+fi
+
+Q="SELECT partition_id, total_rows, total_logical_bytes FROM \`$PROJECT.$DATASET\`.INFORMATION_SCHEMA.PARTITIONS WHERE table_name = '$TABLE' ORDER BY partition_id DESC LIMIT 10000"
+
+echo "${Q}"
+echo "${Q}" | bqq
